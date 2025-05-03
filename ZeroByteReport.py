@@ -5,10 +5,10 @@ import tldextract
 import re
 import socket
 import urllib.parse
+from ipwhois import IPWhois
 
 # Disabilita i warning SSL
 requests.packages.urllib3.disable_warnings()
-
 
 def scan_website(url):
     if not url.startswith(('http://', 'https://')):
@@ -17,7 +17,8 @@ def scan_website(url):
     headers = {'User-Agent': 'Mozilla/5.0'}
 
     try:
-        response = requests.get(url, headers=headers, verify=False, timeout=10)
+        # Aumentato il timeout a 30 secondi per evitare errori di connessione
+        response = requests.get(url, headers=headers, verify=False, timeout=30)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         print(f"Errore nella connessione: {e}")
@@ -38,6 +39,9 @@ def scan_website(url):
     # Ottieni registrar e email
     registrar, registrar_email = get_registrar(domain)
 
+    # Ottieni informazioni sull'hosting (IP)
+    hosting_provider, hosting_emails = get_hosting_info(ip_address)
+
     # Output finale
     print("\n--- Strumento per Segnalazioni - by zero_byte ---\n")
     print(f"Dominio: {domain}")
@@ -45,6 +49,8 @@ def scan_website(url):
     print(f"Email trovate nel sito: {', '.join(emails) if emails else 'Nessuna'}")
     print(f"Registrar: {registrar}")
     print(f"Email del registrar: {', '.join(registrar_email) if registrar_email else 'Nessuna trovata'}")
+    print(f"Hosting Provider: {hosting_provider}")
+    print(f"Email del provider: {', '.join(hosting_emails) if hosting_emails else 'Nessuna trovata'}")
     print("\n-----------------------------------------------\n")
 
 
@@ -70,6 +76,17 @@ def get_registrar(domain):
         return registrar, registrar_email
     except Exception:
         return "Non disponibile", None
+
+
+def get_hosting_info(ip_address):
+    try:
+        obj = IPWhois(ip_address)                                                                                 results = obj.lookup_rdap()
+        hosting_provider = results.get('network', {}).get('name', 'Non disponibile')
+        emails = results.get('network', {}).get('abuse_emails', [])
+        if isinstance(emails, str):
+            emails = [emails]                                                                                     return hosting_provider, emails
+    except Exception as e:
+        return "Non disponibile", []
 
 
 # Esegui la scansione
